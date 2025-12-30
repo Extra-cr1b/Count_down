@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Countdown to 2026</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+
+<style>
+html,body{
+  margin:0;padding:0;height:100%;
+  background:black;overflow:hidden;color:white;
+}
+canvas{position:fixed;inset:0;z-index:0}
+
+/* TITLE */
+#title{
+  position:absolute;top:20px;width:100%;
+  text-align:center;font-family:Montserrat,sans-serif;
+  font-size:56px;font-weight:900;color:red;
+  text-shadow:0 0 20px red,0 0 70px crimson;
+  animation:glow 2s infinite alternate;z-index:2;
+}
+@keyframes glow{
+  from{ text-shadow:0 0 20px red }
+  to{ text-shadow:0 0 90px crimson }
+}
+
+/* CLOCK */
+#clock{
+  position:absolute;bottom:150px;width:100%;
+  display:flex;justify-content:center;gap:20px;z-index:2;
+}
+.unit{text-align:center;font-family:"Comic Sans MS",cursive}
+.flip{
+  background:#111;border-radius:14px;
+  padding:15px 22px;font-size:34px;min-width:90px;
+  box-shadow:0 0 18px rgba(255,0,0,.8);
+  transition:transform .4s;
+}
+.flip.animate{transform:rotateX(360deg)}
+.label{font-size:14px;opacity:.8}
+
+/* FINAL NUMBER */
+#final{
+  position:fixed;inset:0;display:none;
+  align-items:center;justify-content:center;
+  font-family:Montserrat,sans-serif;
+  font-size:220px;font-weight:900;
+  color:white;
+  text-shadow:0 0 40px red,0 0 120px crimson;
+  z-index:5;
+  animation:pulse .6s infinite alternate;
+}
+@keyframes pulse{
+  from{transform:scale(1)}
+  to{transform:scale(1.1)}
+}
+
+/* CONTROLS */
+#controls{
+  position:absolute;bottom:20px;width:100%;
+  text-align:center;z-index:2;
+}
+button,input{margin:4px}
+#nowPlaying{font-size:14px;opacity:.85}
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="title">COUNTDOWN TO 2026</div>
+
+<div id="clock">
+  <div class="unit"><div class="flip" id="d">0</div><div class="label">Days</div></div>
+  <div class="unit"><div class="flip" id="h">0</div><div class="label">Hours</div></div>
+  <div class="unit"><div class="flip" id="m">0</div><div class="label">Minutes</div></div>
+  <div class="unit"><div class="flip" id="s">0</div><div class="label">Seconds</div></div>
+</div>
+
+<div id="final"></div>
+
+<div id="controls">
+  <button onclick="prevSong()">⏮️ Prev</button>
+  <button onclick="nextSong()">⏭️ Next</button>
+  <button onclick="toggleFullscreen()">Fullscreen</button>
+  Volume <input id="vol" type="range" min="0" max="1" step="0.01" value="0.7">
+  <div id="nowPlaying">Click anywhere to start music 🎶</div>
+</div>
+
+<audio id="player"></audio>
+
+<script>
+/* FULLSCREEN */
+function toggleFullscreen(){
+  if(!document.fullscreenElement)
+    document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+/* MUSIC */
+const playlist=[
+ {f:"firework.mp3",n:"Firework"},
+ {f:"beautiful_things.mp3",n:"Beautiful Things"},
+ {f:"gods_got_my_back.mp3",n:"God's Got My Back"},
+ {f:"blessings.mp3",n:"Blessings"},
+ {f:"song5.mp3",n:"Extra Song 1"},
+ {f:"song6.mp3",n:"Extra Song 2"},
+ {f:"song7.mp3",n:"Extra Song 3"},
+ {f:"final_countdown.mp3",n:"The Final Countdown"}
+];
+
+let songIndex=0;
+const player=document.getElementById("player");
+const nowPlaying=document.getElementById("nowPlaying");
+
+player.volume=.7;
+document.getElementById("vol").oninput=e=>player.volume=e.target.value;
+
+function playSong(){
+  player.src=playlist[songIndex].f;
+  player.play();
+  nowPlaying.textContent="Now Playing: "+playlist[songIndex].n;
+}
+
+function nextSong(){
+  songIndex=(songIndex+1)%playlist.length;
+  playSong();
+}
+function prevSong(){
+  songIndex=(songIndex-1+playlist.length)%playlist.length;
+  playSong();
+}
+
+player.onended=nextSong;
+document.body.addEventListener("click",playSong,{once:true});
+
+/* COUNTDOWN */
+const T=new Date("January 1, 2026 00:00:00").getTime();
+const el={d:d,h:h,m:m,s:s};
+const final=document.getElementById("final");
+let exploded=false;
+
+function flip(e,v){
+ if(e.textContent!=v){
+  e.textContent=v;
+  e.classList.add("animate");
+  setTimeout(()=>e.classList.remove("animate"),400);
+ }
+}
+
+setInterval(()=>{
+ const diff=T-Date.now();
+ if(diff<=0 && !exploded){
+   exploded=true;
+   final.style.display="none";
+   explode(canvas.width/2,canvas.height/2,200);
+   return;
+ }
+ if(diff<=0) return;
+
+ const D=Math.floor(diff/86400000),
+       H=Math.floor(diff/3600000)%24,
+       M=Math.floor(diff/60000)%60,
+       S=Math.floor(diff/1000)%60;
+
+ flip(el.d,D); flip(el.h,H); flip(el.m,M); flip(el.s,S);
+
+ if(D===0 && H===0 && M===0 && S<=10){
+   final.style.display="flex";
+   final.textContent=S;
+ }
+},1000);
+
+/* VISUALS – SLOWED FIREWORKS */
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+resize();window.onresize=resize;
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+
+class Rocket{
+ constructor(){
+  this.x=Math.random()*canvas.width;
+  this.y=canvas.height;
+  this.vy=-(Math.random()*4+6); // slower
+  this.ty=Math.random()*canvas.height/2;
+ }
+ update(){
+  this.y+=this.vy;
+  ctx.strokeStyle="white";
+  ctx.beginPath();
+  ctx.moveTo(this.x,this.y);
+  ctx.lineTo(this.x,this.y+20);
+  ctx.stroke();
+  if(this.y<=this.ty){explode(this.x,this.y,50);return false}
+  return true;
+ }
+}
+
+class Spark{
+ constructor(x,y){
+  this.x=x;this.y=y;
+  this.vx=(Math.random()-.5)*4; // slower
+  this.vy=(Math.random()-.5)*4;
+  this.life=120; // longer
+  this.c=`hsl(${Math.random()*360},100%,60%)`;
+ }
+ update(){
+  this.x+=this.vx;this.y+=this.vy;this.life--;
+  ctx.fillStyle=this.c;
+  ctx.fillRect(this.x,this.y,3,3);
+ }
+}
+
+let rockets=[],sparks=[];
+
+function explode(x,y,count){
+ for(let i=0;i<count;i++)sparks.push(new Spark(x,y));
+}
+
+setInterval(()=>rockets.push(new Rocket()),1200); // slower launch
+
+function animate(){
+ ctx.fillStyle="rgba(0,0,0,.2)";
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ rockets=rockets.filter(r=>r.update());
+ sparks=sparks.filter(p=>{p.update();return p.life>0});
+
+ requestAnimationFrame(animate);
+}
+animate();
+</script>
+
+</body>
+</html>
